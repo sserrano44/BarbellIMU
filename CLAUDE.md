@@ -30,6 +30,13 @@ python barbell_imu.py             # Run with defaults (100Hz)
 python barbell_imu.py -s -r 100   # Show live samples at 100Hz
 python barbell_imu.py -c          # Run calibration before streaming
 python barbell_imu.py -d AA:BB:CC:DD:EE:FF  # Connect to specific device
+
+# VBT (Velocity-Based Training) mode
+python barbell_imu.py --vbt                           # Enable VBT processing
+python barbell_imu.py --vbt --exercise squat          # With exercise type
+python barbell_imu.py --vbt --load-kg 100             # Track load
+python barbell_imu.py --vbt --loss-threshold 20       # Warn if velocity drops >20%
+python barbell_imu.py --vbt --invert                  # Flip velocity sign (inverted mount)
 ```
 
 ## Architecture
@@ -45,7 +52,8 @@ firmware/
 
 host/
 ├── barbell_imu.py       # Async BLE client using bleak library
-└── protocol.py          # Mirror of firmware protocol definitions
+├── protocol.py          # Mirror of firmware protocol definitions
+└── vbt.py               # VBT processor: velocity integration, rep detection
 ```
 
 **Key data flow**: IMU task samples MPU6050 → builds 20-byte packet → BLE service sends notification → Host receives via bleak → logs to CSV
@@ -67,3 +75,31 @@ The protocol is defined identically in `firmware/main/protocol.h` (C) and `host/
 - Gyro calibration offsets are stored in RAM only (not persisted to flash)
 - BLE packets fit default MTU (20 bytes payload + 3 bytes overhead = 23)
 - Sequence number is 8-bit, wraps at 256 (used for packet loss detection)
+
+## VBT Processing
+
+The host tool supports real-time Velocity-Based Training metrics via `--vbt`:
+
+**Algorithm overview:**
+1. **Gravity estimation**: Low-pass filter on accelerometer (τ=0.5s default) to find "down"
+2. **Linear acceleration**: Subtract gravity estimate from measured acceleration
+3. **Vertical velocity**: Integrate acceleration projected onto gravity vector
+4. **ZUPT**: Zero Velocity Update resets velocity when stationary (accel ~1g, low gyro)
+5. **Rep detection**: State machine detects stationary→moving→stationary transitions
+6. **Drift correction**: Linear ramp subtraction at rep end enforces v_end=0
+
+**Outputs per rep:**
+- Mean Concentric Velocity (MCV): time-weighted average during upward motion
+- Peak Concentric Velocity (PCV): maximum velocity during concentric phase
+- Concentric duration, total rep duration
+- Velocity loss %: tracks fatigue relative to best rep in set
+
+**Tuning parameters** (CLI flags):
+- `--tau` / `--alpha`: Gravity filter responsiveness
+- `--stationary-accel-g`, `--stationary-gyro-dps`: ZUPT sensitivity
+- `--stationary-hold-ms`: Time to confirm rest (rep boundary detection)
+- `--concentric-v-min`: Threshold for concentric phase (default 0.05 m/s)
+
+**Output files:**
+- `imu_data_<ts>.csv`: Raw IMU samples (unchanged)
+- `reps_<ts>.csv`: Per-rep metrics (when VBT enabled)
