@@ -77,6 +77,10 @@ class VBTConfig:
     # Concentric phase detection
     concentric_v_min: float = 0.05     # Minimum velocity for concentric phase (m/s)
 
+    # Rep validation - reject reps that don't meet these thresholds
+    min_rep_mcv: float = 0.1           # Minimum MCV to count as valid rep (m/s)
+    min_concentric_duration_ms: float = 100  # Minimum concentric duration (ms)
+
     # Orientation
     invert: bool = False               # Invert velocity sign if IMU mounted inverted
 
@@ -385,6 +389,18 @@ class VBTProcessor:
             peak_v = max(positive_v) if positive_v else 0.0
             mean_v = sum(positive_v) / len(positive_v) if positive_v else 0.0
             concentric_duration = 0.0
+
+        # Validate rep: must have meaningful concentric velocity and duration
+        # This filters out false positives from small movements/bumps
+        if mean_v < self.config.min_rep_mcv:
+            # Not a real rep - MCV too low
+            self.rep_buffer = []
+            return
+
+        if concentric_duration * 1000 < self.config.min_concentric_duration_ms:
+            # Not a real rep - concentric phase too short
+            self.rep_buffer = []
+            return
 
         # Update best MCV for velocity loss calculation
         self.rep_count += 1
