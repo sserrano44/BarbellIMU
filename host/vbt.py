@@ -65,10 +65,13 @@ class VBTConfig:
     alpha: Optional[float] = None  # If None, computed from tau
     tau_s: float = 0.5             # Time constant in seconds
 
+    # Gravity convergence - block rep detection until gravity estimate is stable
+    gravity_convergence_time_s: float = 1.5  # Warmup time before rep detection
+
     # ZUPT thresholds
     stationary_accel_g: float = 0.05   # Max deviation from 1g to be stationary
     stationary_gyro_dps: float = 5.0   # Max gyro magnitude to be stationary
-    stationary_hold_ms: float = 250    # Time to confirm stationary state
+    stationary_hold_ms: float = 150    # Time to confirm stationary state (reduced from 250)
 
     # Rep detection
     move_confirm_ms: float = 50        # Time to confirm movement started
@@ -80,6 +83,7 @@ class VBTConfig:
     # Rep validation - reject reps that don't meet these thresholds
     min_rep_mcv: float = 0.1           # Minimum MCV to count as valid rep (m/s)
     min_concentric_duration_ms: float = 100  # Minimum concentric duration (ms)
+    max_rep_peak_gyro_dps: float = 100.0  # Max peak gyro - reject racking/uncontrolled movements
 
     # Orientation
     invert: bool = False               # Invert velocity sign if IMU mounted inverted
@@ -119,6 +123,12 @@ class VBTProcessor:
         # Will converge to actual orientation via low-pass filter
         self.g_est = [0.0, 0.0, G_M_S2]  # m/s^2
         self.gravity_initialized = False
+
+        # Gravity convergence tracking
+        # Block rep detection until gravity estimate is stable
+        self.gravity_sample_count = 0
+        self.gravity_converged = False
+        self.gravity_convergence_samples_required = 0  # Computed from dt on first packet
 
         # Velocity integration
         self.velocity = 0.0  # Current vertical velocity estimate (m/s)
@@ -402,6 +412,13 @@ class VBTProcessor:
             self.rep_buffer = []
             return
 
+        # Validate rep: check peak gyro (reject racking/uncontrolled movements)
+        # Racking typically shows 100-300+ dps vs normal reps 16-50 dps
+        if self.rep_peak_gyro > self.config.max_rep_peak_gyro_dps:
+            # Not a real rep - too much rotation (likely racking or setup)
+            self.rep_buffer = []
+            return
+
         # Update best MCV for velocity loss calculation
         self.rep_count += 1
         if mean_v > self.best_mean_velocity:
@@ -470,6 +487,20 @@ class VBTProcessor:
             alpha = self._compute_alpha(dt_s)
             self._update_gravity_estimate(a_meas, alpha)
 
+        # Track gravity convergence
+        # Block rep detection until gravity estimate has had time to stabilize
+        if not self.gravity_converged:
+            self.gravity_sample_count += 1
+            # Compute required samples on first packet with valid dt
+            if self.gravity_convergence_samples_required == 0 and dt_s > 0:
+                self.gravity_convergence_samples_required = int(
+                    self.config.gravity_convergence_time_s / dt_s
+                )
+            # Check if we've accumulated enough samples (only if required has been set)
+            if self.gravity_convergence_samples_required > 0 and \
+               self.gravity_sample_count >= self.gravity_convergence_samples_required:
+                self.gravity_converged = True
+
         # Compute linear acceleration (remove gravity)
         a_lin = [a_meas[i] - self.g_est[i] for i in range(3)]
 
@@ -502,8 +533,13 @@ class VBTProcessor:
             else:
                 self.velocity += a_up * dt_s
 
-        # Update rep state machine
-        self._process_rep_state_machine(is_currently_stationary, timestamp_us)
+        # Update rep state machine (only if gravity has converged)
+        if self.gravity_converged:
+            self._process_rep_state_machine(is_currently_stationary, timestamp_us)
+        else:
+            # Still in warmup - don't detect reps, reset velocity to avoid drift
+            self.rep_state = RepState.WAITING_FOR_STATIONARY
+            self.velocity = 0.0
 
         # If in a rep, buffer the sample and track peaks
         if self.rep_state in (RepState.MOVING, RepState.MAYBE_STATIONARY):

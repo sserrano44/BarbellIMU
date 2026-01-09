@@ -640,6 +640,18 @@ async def main():
         action="store_true",
         help="Disable terminal bell on rep completion"
     )
+    parser.add_argument(
+        "--max-rep-gyro",
+        type=float,
+        default=100.0,
+        help="Maximum peak gyro (dps) to accept as valid rep - rejects racking (default: 100)"
+    )
+    parser.add_argument(
+        "--gravity-warmup-s",
+        type=float,
+        default=1.5,
+        help="Gravity convergence warmup time in seconds (default: 1.5)"
+    )
 
     args = parser.parse_args()
 
@@ -658,11 +670,13 @@ async def main():
         vbt_config = VBTConfig(
             alpha=args.alpha,
             tau_s=args.tau,
+            gravity_convergence_time_s=args.gravity_warmup_s,
             stationary_accel_g=args.stationary_accel_g,
             stationary_gyro_dps=args.stationary_gyro_dps,
             stationary_hold_ms=args.stationary_hold_ms,
             move_confirm_ms=args.move_confirm_ms,
             concentric_v_min=args.concentric_v_min,
+            max_rep_peak_gyro_dps=args.max_rep_gyro,
             invert=args.invert,
         )
 
