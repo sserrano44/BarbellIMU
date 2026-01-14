@@ -63,11 +63,13 @@ python barbell_imu.py --help
 
 **VBT tuning parameters:**
 - `--tau SEC`: Gravity filter time constant (default: 0.5)
-- `--stationary-accel-g G`: Max accel deviation from 1g for rest detection (default: 0.05)
-- `--stationary-gyro-dps DPS`: Max gyro for rest detection (default: 5.0)
-- `--stationary-hold-ms MS`: Time to confirm stationary state (default: 250)
+- `--stationary-accel-g G`: Max accel deviation from 1g for rest detection (exercise-specific defaults)
+- `--stationary-gyro-dps DPS`: Max gyro for rest detection (exercise-specific defaults)
+- `--stationary-hold-ms MS`: Time to confirm stationary state (exercise-specific defaults)
 - `--move-confirm-ms MS`: Time to confirm movement started (default: 50)
 - `--concentric-v-min M/S`: Min velocity for concentric phase (default: 0.05)
+
+**Note:** The `--exercise` flag automatically applies tuned thresholds for each lift. Bench press uses relaxed thresholds to handle the horizontal bar path and continuous movement pattern.
 
 ## BLE Protocol
 
@@ -132,3 +134,25 @@ Rep 2 | MCV 0.48 m/s | PCV 0.63 m/s | Con 0.71s | Loss 8%
 Rep 3 | MCV 0.41 m/s | PCV 0.55 m/s | Con 0.82s | Loss 21%
   WARNING: Velocity loss 21% exceeds threshold 20%
 ```
+
+### Exercise-Specific Detection
+
+The tool uses exercise-specific thresholds for optimal rep detection:
+
+| Exercise | Detection Style | Notes |
+|----------|----------------|-------|
+| Squat | Standard ZUPT | Works well with natural pause at top |
+| Deadlift | Standard ZUPT | Works well with floor reset between reps |
+| Bench | Relaxed thresholds | Handles horizontal bar path and rotation |
+
+### Tips for Accurate Rep Detection
+
+**For best results with bench press:**
+- **Pause briefly at lockout** (~0.5s) between reps to ensure clean rep segmentation
+- Touch-and-go style may merge consecutive reps together
+- The algorithm detects rest periods to separate reps; without pauses, it sees continuous movement
+
+**For all exercises:**
+- Keep the sensor securely attached to the barbell
+- Calibrate (`-c`) before each session for best accuracy
+- Place the barbell at rest before starting your set

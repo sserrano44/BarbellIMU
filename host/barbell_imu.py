@@ -593,20 +593,20 @@ async def main():
     parser.add_argument(
         "--stationary-accel-g",
         type=float,
-        default=0.05,
-        help="Stationary detection: max accel deviation from 1g (default: 0.05)"
+        default=None,
+        help="Stationary detection: max accel deviation from 1g (uses exercise defaults if not set)"
     )
     parser.add_argument(
         "--stationary-gyro-dps",
         type=float,
-        default=5.0,
-        help="Stationary detection: max gyro magnitude (default: 5.0)"
+        default=None,
+        help="Stationary detection: max gyro magnitude (uses exercise defaults if not set)"
     )
     parser.add_argument(
         "--stationary-hold-ms",
         type=float,
-        default=250,
-        help="Time to confirm stationary state in ms (default: 250)"
+        default=None,
+        help="Time to confirm stationary state in ms (uses exercise defaults if not set)"
     )
     parser.add_argument(
         "--move-confirm-ms",
@@ -667,18 +667,27 @@ async def main():
     # Build VBT config if enabled
     vbt_config = None
     if args.vbt:
-        vbt_config = VBTConfig(
-            alpha=args.alpha,
-            tau_s=args.tau,
-            gravity_convergence_time_s=args.gravity_warmup_s,
-            stationary_accel_g=args.stationary_accel_g,
-            stationary_gyro_dps=args.stationary_gyro_dps,
-            stationary_hold_ms=args.stationary_hold_ms,
-            move_confirm_ms=args.move_confirm_ms,
-            concentric_v_min=args.concentric_v_min,
-            max_rep_peak_gyro_dps=args.max_rep_gyro,
-            invert=args.invert,
-        )
+        # Build config overrides from CLI args (only if explicitly specified)
+        overrides = {
+            "tau_s": args.tau,
+            "gravity_convergence_time_s": args.gravity_warmup_s,
+            "move_confirm_ms": args.move_confirm_ms,
+            "concentric_v_min": args.concentric_v_min,
+            "max_rep_peak_gyro_dps": args.max_rep_gyro,
+            "invert": args.invert,
+        }
+        if args.alpha is not None:
+            overrides["alpha"] = args.alpha
+        if args.stationary_accel_g is not None:
+            overrides["stationary_accel_g"] = args.stationary_accel_g
+        if args.stationary_gyro_dps is not None:
+            overrides["stationary_gyro_dps"] = args.stationary_gyro_dps
+        if args.stationary_hold_ms is not None:
+            overrides["stationary_hold_ms"] = args.stationary_hold_ms
+
+        # Use exercise-specific defaults, with CLI overrides
+        exercise = args.exercise or "squat"
+        vbt_config = VBTConfig.for_exercise(exercise, **overrides)
 
     # Create client
     imu = BarbellIMU(

@@ -68,10 +68,11 @@ class VBTConfig:
     # Gravity convergence - block rep detection until gravity estimate is stable
     gravity_convergence_time_s: float = 1.5  # Warmup time before rep detection
 
-    # ZUPT thresholds
+    # ZUPT thresholds - defaults tuned for squat/deadlift
+    # For bench press, use VBTConfig.for_exercise("bench") for relaxed thresholds
     stationary_accel_g: float = 0.05   # Max deviation from 1g to be stationary
-    stationary_gyro_dps: float = 5.0   # Max gyro magnitude to be stationary
-    stationary_hold_ms: float = 150    # Time to confirm stationary state (reduced from 250)
+    stationary_gyro_dps: float = 10.0  # Max gyro magnitude to be stationary
+    stationary_hold_ms: float = 150    # Time to confirm stationary state
 
     # Rep detection
     move_confirm_ms: float = 50        # Time to confirm movement started
@@ -87,6 +88,40 @@ class VBTConfig:
 
     # Orientation
     invert: bool = False               # Invert velocity sign if IMU mounted inverted
+
+    @classmethod
+    def for_exercise(cls, exercise: str, **overrides) -> "VBTConfig":
+        """
+        Create exercise-specific configuration with tuned thresholds.
+
+        Bench press requires relaxed ZUPT thresholds because:
+        - Bar path has significant horizontal component (rotation)
+        - Touch-and-go style means less pause between reps
+        - More natural "bounce" at bottom vs. squat/deadlift pause
+
+        Args:
+            exercise: One of "squat", "bench", "deadlift"
+            **overrides: Additional config overrides
+
+        Returns:
+            VBTConfig with exercise-appropriate defaults
+        """
+        # Default config (works well for squat/deadlift)
+        config_args = {}
+
+        if exercise == "bench":
+            # Bench press: relaxed thresholds for continuous movement
+            # Tuned from real bench press data - balance between false positives/negatives
+            config_args = {
+                "stationary_accel_g": 0.10,    # More tolerant (bar wobbles more)
+                "stationary_gyro_dps": 25.0,   # Higher gyro allowed (bar arcs)
+                "stationary_hold_ms": 75,      # Shorter pause required
+                "min_rep_duration_ms": 700,    # Filter lockout adjustments (real reps are 0.8-2s)
+            }
+
+        # Apply any user overrides
+        config_args.update(overrides)
+        return cls(**config_args)
 
 
 class VBTProcessor:
@@ -129,6 +164,7 @@ class VBTProcessor:
         self.gravity_sample_count = 0
         self.gravity_converged = False
         self.gravity_convergence_samples_required = 0  # Computed from dt on first packet
+        self.gravity_locked = False  # Lock gravity estimate after convergence
 
         # Velocity integration
         self.velocity = 0.0  # Current vertical velocity estimate (m/s)
@@ -482,8 +518,9 @@ class VBTProcessor:
             packet.gx_dps**2 + packet.gy_dps**2 + packet.gz_dps**2
         )
 
-        # Update gravity estimate
-        if dt_s > 0:
+        # Update gravity estimate (only until locked after convergence)
+        # Locking prevents drift from rotation during movements like bench press
+        if dt_s > 0 and not self.gravity_locked:
             alpha = self._compute_alpha(dt_s)
             self._update_gravity_estimate(a_meas, alpha)
 
@@ -500,6 +537,7 @@ class VBTProcessor:
             if self.gravity_convergence_samples_required > 0 and \
                self.gravity_sample_count >= self.gravity_convergence_samples_required:
                 self.gravity_converged = True
+                self.gravity_locked = True  # Lock gravity once converged
 
         # Compute linear acceleration (remove gravity)
         a_lin = [a_meas[i] - self.g_est[i] for i in range(3)]
