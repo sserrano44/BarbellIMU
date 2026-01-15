@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-BarbellIMU is an embedded IoT project for velocity-based resistance training using an MPU-6050 6-axis IMU on an ESP32-C3 with BLE connectivity. It has two components:
+BarbellBuddy is an embedded IoT project for velocity-based resistance training using an MPU-6050 6-axis IMU on an ESP32-C3 with BLE connectivity. It has two components:
 - **Firmware** (C/ESP-IDF): BLE peripheral running on ESP32-C3, streams IMU data
 - **Host Tool** (Python): BLE client that connects, receives data, and logs to CSV
 
@@ -26,17 +26,17 @@ idf.py -p /dev/ttyUSB0 flash monitor  # Flash and monitor in one command
 ```bash
 cd host
 pip install -r requirements.txt
-python barbell_imu.py             # Run with defaults (100Hz)
-python barbell_imu.py -s -r 100   # Show live samples at 100Hz
-python barbell_imu.py -c          # Run calibration before streaming
-python barbell_imu.py -d AA:BB:CC:DD:EE:FF  # Connect to specific device
+python barbell_buddy.py             # Run with defaults (100Hz)
+python barbell_buddy.py -s -r 100   # Show live samples at 100Hz
+python barbell_buddy.py -c          # Run calibration before streaming
+python barbell_buddy.py -d AA:BB:CC:DD:EE:FF  # Connect to specific device
 
 # VBT (Velocity-Based Training) mode
-python barbell_imu.py --vbt                           # Enable VBT processing
-python barbell_imu.py --vbt --exercise squat          # With exercise type
-python barbell_imu.py --vbt --load-kg 100             # Track load
-python barbell_imu.py --vbt --loss-threshold 20       # Warn if velocity drops >20%
-python barbell_imu.py --vbt --invert                  # Flip velocity sign (inverted mount)
+python barbell_buddy.py --vbt                           # Enable VBT processing
+python barbell_buddy.py --vbt --exercise squat          # With exercise type
+python barbell_buddy.py --vbt --load-kg 100             # Track load
+python barbell_buddy.py --vbt --loss-threshold 20       # Warn if velocity drops >20%
+python barbell_buddy.py --vbt --invert                  # Flip velocity sign (inverted mount)
 ```
 
 ## Architecture
@@ -51,7 +51,7 @@ firmware/
 └── components/mpu6050/  # Custom I2C driver for MPU-6050
 
 host/
-├── barbell_imu.py       # Async BLE client using bleak library
+├── barbell_buddy.py     # Async BLE client using bleak library
 ├── protocol.py          # Mirror of firmware protocol definitions
 └── vbt.py               # VBT processor: velocity integration, rep detection
 ```

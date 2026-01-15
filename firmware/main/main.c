@@ -32,7 +32,7 @@ static void stream_task(void *arg)
 
 void app_main(void)
 {
-    ESP_LOGI(TAG, "Barbell IMU v%d.%d starting...", FW_VERSION_MAJOR, FW_VERSION_MINOR);
+    ESP_LOGI(TAG, "Barbell Buddy v%d.%d starting...", FW_VERSION_MAJOR, FW_VERSION_MINOR);
 
     // Initialize NVS (required for BLE)
     esp_err_t ret = nvs_flash_init();

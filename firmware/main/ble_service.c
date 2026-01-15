@@ -13,7 +13,7 @@
 
 static const char *TAG = "ble_service";
 
-#define DEVICE_NAME "BarbellIMU"
+#define DEVICE_NAME "BarbellBuddy"
 
 // Connection handle
 static uint16_t s_conn_handle = BLE_HS_CONN_HANDLE_NONE;
@@ -24,10 +24,10 @@ static uint16_t s_stream_val_handle;
 static uint16_t s_status_val_handle;
 
 // UUIDs
-static const ble_uuid128_t s_service_uuid = BLE_UUID128_INIT(BARBELL_IMU_SERVICE_UUID);
-static const ble_uuid128_t s_stream_uuid = BLE_UUID128_INIT(BARBELL_IMU_STREAM_CHAR_UUID);
-static const ble_uuid128_t s_command_uuid = BLE_UUID128_INIT(BARBELL_IMU_COMMAND_CHAR_UUID);
-static const ble_uuid128_t s_status_uuid = BLE_UUID128_INIT(BARBELL_IMU_STATUS_CHAR_UUID);
+static const ble_uuid128_t s_service_uuid = BLE_UUID128_INIT(BARBELL_BUDDY_SERVICE_UUID);
+static const ble_uuid128_t s_stream_uuid = BLE_UUID128_INIT(BARBELL_BUDDY_STREAM_CHAR_UUID);
+static const ble_uuid128_t s_command_uuid = BLE_UUID128_INIT(BARBELL_BUDDY_COMMAND_CHAR_UUID);
+static const ble_uuid128_t s_status_uuid = BLE_UUID128_INIT(BARBELL_BUDDY_STATUS_CHAR_UUID);
 
 // Status buffer
 static status_payload_t s_status_buf;

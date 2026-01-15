@@ -1,4 +1,4 @@
-# Barbell IMU Sensor MVP
+# Barbell Buddy
 
 ESP32 + MPU-6050 motion sensor for velocity-based training data collection.
 
@@ -32,16 +32,16 @@ cd host
 pip install -r requirements.txt
 
 # Run (scans for device automatically)
-python barbell_imu.py
+python barbell_buddy.py
 
 # With options
-python barbell_imu.py --rate 100 --calibrate --show-samples
+python barbell_buddy.py --rate 100 --calibrate --show-samples
 
 # VBT mode for real-time velocity tracking
-python barbell_imu.py --vbt --exercise squat --load-kg 100
+python barbell_buddy.py --vbt --exercise squat --load-kg 100
 
 # Help
-python barbell_imu.py --help
+python barbell_buddy.py --help
 ```
 
 ### CLI Options

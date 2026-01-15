@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Barbell IMU Test Harness
+Barbell Buddy Test Harness
 Connects to the ESP32 BLE sensor and logs IMU data to disk.
 
 Supports optional VBT (Velocity-Based Training) metrics for real-time
@@ -118,8 +118,8 @@ class Statistics:
         return rate
 
 
-class BarbellIMU:
-    """BLE client for Barbell IMU sensor with optional VBT processing"""
+class BarbellBuddy:
+    """BLE client for Barbell Buddy sensor with optional VBT processing"""
 
     def __init__(
         self,
@@ -173,13 +173,13 @@ class BarbellIMU:
         self.pending_rep_display: Optional[RepMetrics] = None  # For one-time display
 
     async def scan(self, timeout: float = 10.0) -> Optional[BLEDevice]:
-        """Scan for BarbellIMU device"""
-        print(f"Scanning for BarbellIMU device (timeout: {timeout}s)...")
+        """Scan for BarbellBuddy device"""
+        print(f"Scanning for BarbellBuddy device (timeout: {timeout}s)...")
 
         devices = await BleakScanner.discover(timeout=timeout, return_adv=True)
 
         for device, adv_data in devices.values():
-            if device.name and "BarbellIMU" in device.name:
+            if device.name and "BarbellBuddy" in device.name:
                 print(f"Found: {device.name} ({device.address})")
                 return device
 
@@ -190,7 +190,7 @@ class BarbellIMU:
                         print(f"Found by UUID: {device.name} ({device.address})")
                         return device
 
-        print("No BarbellIMU device found")
+        print("No BarbellBuddy device found")
         return None
 
     async def connect(self, device: BLEDevice) -> bool:
@@ -206,10 +206,10 @@ class BarbellIMU:
             services = self.client.services
             for service in services:
                 if SERVICE_UUID.lower() in service.uuid.lower():
-                    print(f"Found BarbellIMU service: {service.uuid}")
+                    print(f"Found BarbellBuddy service: {service.uuid}")
                     break
             else:
-                print("Warning: BarbellIMU service not found in discovered services")
+                print("Warning: BarbellBuddy service not found in discovered services")
 
             # Read status
             await self.read_status()
@@ -536,7 +536,7 @@ class BarbellIMU:
 
 
 async def main():
-    parser = argparse.ArgumentParser(description="Barbell IMU Test Harness")
+    parser = argparse.ArgumentParser(description="Barbell Buddy Test Harness")
 
     # Existing options
     parser.add_argument(
@@ -690,7 +690,7 @@ async def main():
         vbt_config = VBTConfig.for_exercise(exercise, **overrides)
 
     # Create client
-    imu = BarbellIMU(
+    imu = BarbellBuddy(
         output_dir=output_dir,
         stream_rate=rate,
         show_samples=args.show_samples,
@@ -717,7 +717,7 @@ async def main():
         # Find device
         if args.device:
             from bleak.backends.device import BLEDevice
-            device = BLEDevice(args.device, "BarbellIMU", {}, 0)
+            device = BLEDevice(args.device, "BarbellBuddy", {}, 0)
         else:
             device = await imu.scan()
             if not device:
